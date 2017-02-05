@@ -3,22 +3,8 @@ import tensorflow as tf
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-#data = Data("/Volumes/Data/research/sandbox/data/tasks_1-20_v1-2/en/", 1)
-#data.run()
-
-#print(data.data[-1][0])
-#vocab_size = len(data.word2idx)
-
-#print data.max_sentence_size
-
-#p = tf.nn.softmax(logits)
-
-#texts = tf.placeholder(tf.int32, shape=())
-#feed_dict = {texts: }
-#sess.run([], feed_dict=feed_dict)
-
-
 def position_encoding(d, J):
+    # TODO
     # Position Encoding described in section 4.1 [1]
     # d = dimension of embedding
     # J = vocab_size
@@ -31,41 +17,50 @@ def position_encoding(d, J):
     encoding = 1 + 4 * encoding / d / J
     return np.transpose(encoding)
 
-   
-
-
 # Notes:
 #tf.nn.embedding_lookup(params, ids) = Ax
-
 class memN2N(object):
-    def __init__(self, vocab_size):
+    def __init__(self, vocab_size, sentence_size, batch_size):
         self.dim = 10 # d = edim = 'internal state dimension' 
-        self.mem_size = 100
+        self.mem_size = 50
         self.vocab_size = vocab_size
-        self.question_size = 3
-        # TOOD: fix 3 to appropriate size - need to pad questions with 0s
-        self.questions = tf.placeholder(tf.int32, [self.question_size, None])
-        self.B = tf.Variable(tf.random_normal([self.dim, self.vocab_size]))
-        #self.B = tf.Variable(tf.random_normal([self.vocab_size, self.dim]))
+        self.sentence_size = sentence_size
+        self.batch_size = batch_size
+        self.qa_pair_num = qa_pair_num = 5
 
-        _test_op = tf.Print(self.questions, [self.questions])
-
-        self.test_op = _test_op
+        self.setup_network()
         self.inference = self._inference()
+
+        _test_op = tf.Print(self.questions, [self.questions, self.B])
+        self.test_op = _test_op
+
+    def setup_network(self):
+        # Inputs (Placeholders)
+        self.sentences = tf.placeholder(tf.int32, [self.batch_size, self.mem_size, self.sentence_size])
+        self.questions = tf.placeholder(tf.int32, [self.batch_size * self.qa_pair_num, self.sentence_size])
+
+        # Internal States (Variables)
+        self.A = tf.Variable(tf.random_normal([self.vocab_size, self.dim]))
+        self.B = tf.Variable(tf.random_normal([self.vocab_size, self.dim]))
+
         # TODO: Check sizes
-        #self.A = tf.Variable(tf.random_normal([self.dim, self.vocab_size]) #[vocab_size, dim]? 
         #self.TA = tf.Variable(tf.random_normal([self.mem_size, self.dim]) # Check sizing later
         #self.C = tf.Variable(tf.random_normal([self.dim, self.vocab_size]) # Check size
         #self.W = tf.Variable(tf.random_normal([self.vocab_size, self.dim])
 
     def _inference(self):#, placeholder, size_of_h1, size_of_h2):
-        tf.reshape(self.questions, [1, 3])
+        #m = tf.nn.embedding_lookup(self.A, self.sentences)
+        
+        # --
         q_embedding = tf.nn.embedding_lookup(self.B, self.questions)
-
+        # TODO: Position Encoding
         u = tf.reduce_sum(q_embedding, 1)
+        return q_embedding, u
+
+        #u = tf.reduce_sum(q_embedding, 1)
         #u = tf.reduce_sum(self.B * position_encoding(self.dim, self.v), 1)
         #print 'q embedding size and u size = ', q_embedding.get_shape(), u.get_shape()
-        return self.B, q_embedding, u
+        #return self.B, q_embedding, u
 
         #print q_embedding
 
@@ -90,22 +85,27 @@ if __name__ == '__main__':
     #data.print_summary()
 
     stories_train, stories_val, questions_train, questions_val, answers_train, answers_val = train_test_split(data.texts, data.questions, data.answers, test_size=0.1) 
+    batch_size = 20
+
+    s = stories_train[0:batch_size]
+    q = questions_train[0:batch_size]
+    a = answers_train[0:batch_size]
+
+    # Flatten lists out
+    q = [question for sublist in q for question in sublist]
 
     ###############
     # Build Model
     ###############
-    model = memN2N(self.vocab_size)
+    model = memN2N(data.vocab_size, data.max_sentence_size, batch_size)
     sess = tf.Session()
     sess.run(tf.initialize_all_variables())
-
-'''
     ###############
     # Train
     ###############
-    for i in range(0, 2):
-        print data.questions[i]
-        print 'feed dict model.questions size: ', np.transpose(np.array(data.questions[i], ndmin=2)).shape
-        feed_dict = {model.questions: np.transpose(np.array(data.questions[i], ndmin=2))}
-        print sess.run(model.inference, feed_dict=feed_dict)
+    for i in range(0, 1):
+        feed_dict = {model.sentences: s, model.questions: q}
+        #print sess.run(model.test_op, feed_dict=feed_dict)
+        tmp = sess.run(model.inference, feed_dict=feed_dict)
+    #    print tmp, tmp.shape
     sess.close()
-'''
