@@ -80,9 +80,9 @@ if __name__ == '__main__':
     ###############
     # Data
     ###############
-    data = Data("/Volumes/Data/research/sandbox/data/tasks_1-20_v1-2/en/", 1)
+    data = Data("/Volumes/Data/research/sandbox/data/tasks_1-20_v1-2/en/", 1, 30)
     data.run()
-    #data.print_summary()
+   # data.print_summary()
 
     stories_train, stories_val, questions_train, questions_val, answers_train, answers_val = train_test_split(data.texts, data.questions, data.answers, test_size=0.1) 
     batch_size = 20
@@ -106,6 +106,6 @@ if __name__ == '__main__':
     for i in range(0, 1):
         feed_dict = {model.sentences: s, model.questions: q}
         #print sess.run(model.test_op, feed_dict=feed_dict)
-        tmp = sess.run(model.inference, feed_dict=feed_dict)
+    #    tmp = sess.run(model.inference, feed_dict=feed_dict)
     #    print tmp, tmp.shape
     sess.close()

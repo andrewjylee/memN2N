@@ -1,13 +1,15 @@
 import os
+import copy
 
 class Data(object):
-    def __init__(self, data_dir, task_id):
+    def __init__(self, data_dir, task_id, mem_size):
         self.data_dir = data_dir
         self.task_id = task_id
         self.data = []
         self.word2idx = {}
         self.idx2word = {}
         self.texts = []
+        self.mem_size = mem_size
         self.max_sentence_size = 0
 
     def run(self):
@@ -18,7 +20,7 @@ class Data(object):
         self.answers = [triplets[2] for triplets in self.data]
         self.max_sentence_size = max([len(t[i]) for t in self.texts for i in range(len(t))])
         self.vocab_size = len(self.word2idx)
-        self.pad()
+        #self.pad()
 
     def read_data(self):
         filename = self.data_dir + "qa" + str(self.task_id) + "_"
@@ -38,6 +40,7 @@ class Data(object):
         #print self.idx2word, self.word2idx
 
         self.data = self.parse_data(train_file)
+        
         self.data = self.vectorize()
         # TODO
         # Parse test_file too?
@@ -51,6 +54,9 @@ class Data(object):
         with open(file_name) as f:
             for line in f.readlines():
                 words = line.split(' ')[1:]
+                if len(words) > self.max_sentence_size:
+                    self.max_sentence_size = len(words)
+                    print self.max_sentence_size
                 for word in words:
                     word = self.clean_word(word)
                     if word not in self.word2idx:
@@ -61,17 +67,15 @@ class Data(object):
 
     def parse_data(self, filename):
         # Returns list of [(list of text sentences), question, answer]
+        text_set = []
         questions = []
         answers = []
         data_triplets = []
         with open(filename) as f:
-            text_set = []
-            question_set = []
-            answer_set = []
             for line in f.readlines():
                 if int(line.split(' ')[0]) == 1:
                     # Beginning of Story
-                    text_set = []
+                    intermediate_text_set = []
                     question_set = []
                     answer_set = []
                         
@@ -80,15 +84,18 @@ class Data(object):
                     splits = line.split('\t')
                     question = splits[0].split(' ', 1)[1].split('?')[0]
                     answer = splits[1]
+                    # TOOD: Fully understand why deepcopy is needed,
+                    # but not needed in vectorize()
+                    text_set.append(copy.deepcopy(intermediate_text_set))
                     question_set.append(question)
                     answer_set.append(answer)
                 else:
                     # Sentence
-                    text_set.append(line.split(' ', 1)[1].split('\n')[0])
+                    intermediate_text_set.append([line.split(' ', 1)[1].split('\n')[0]])
 
                 if int(line.split(' ')[0]) == 15:
                     # End of Story
-                    data_triplets.append([list(text_set), question_set, answer_set])
+                    data_triplets.append([text_set, question_set, answer_set])
                     
         return data_triplets
 
@@ -96,16 +103,23 @@ class Data(object):
     def vectorize(self):
         # Convert list of text, question, answer to vectorized version using word2idx
         vectorized_data = []
-        for text, questions, answers in self.data:
+        for text_set, questions, answers in self.data:
             vectorized_text = []
             vectorized_question = []
             vectorized_answer = []
-            for sentence in text:
-                text_set = []
-                words = sentence.split(' ')
-                for word in words:
-                    text_set.append(self.word2idx[self.clean_word(word)])
-                vectorized_text.append(list(text_set))
+            for sentences in text_set:
+                print sentences
+                subtext_set = []
+                for sentence in sentences:
+                    subtext = []
+                    for word in sentence[0].split(' '):
+                        subtext.append(self.word2idx[self.clean_word(word)])
+                    self.pad_sentence(subtext)
+                    subtext_set.append(subtext)
+                #vectorized_text.append(copy.deepcopy(subtext_set))
+                vectorized_text.append(subtext_set)
+                print 'vectorized:'
+                print vectorized_text
             for question in questions:
                 question_set = []
                 for word in question.split(' '):
@@ -130,6 +144,13 @@ class Data(object):
             for question in questions:
                 if len(question) < self.max_sentence_size:
                     question.extend([0 for x in range(self.max_sentence_size - len(question))])
+    
+    def pad_sentence(self, sentence):
+        # TODO: Question: Do we need to pad the questions too? I think so, since A, B, C need to be same size. 
+        # But won't the padded zeros have an effect on the score matching process?
+        if len(sentence) < self.max_sentence_size:
+            sentence.extend([0 for x in range(self.max_sentence_size - len(sentence))])
+
 
     def clean_word(self, word):
         if '.' in word:
@@ -146,22 +167,14 @@ class Data(object):
         print 'Data Summary: '
         print self.idx2word
 
-        print len(self.texts)
-        print len(self.texts[-1])
+        print '  Size of Data:'
+        print len(self.texts), len(self.questions), len(self.answers)
         print self.texts[-1]
-        print self.data[-1][0]
 
-        print len(self.questions)
-        print len(self.questions[-1])
         print self.questions[-1]
-        print self.data[-1][1]
 
-        print len(self.answers)
-        print len(self.answers[-1])
         print self.answers[-1]
-        print self.data[-1][2]
 
         print '--'
         for i in self.data[-1]:
             print i
-  
