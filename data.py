@@ -56,7 +56,6 @@ class Data(object):
                 words = line.split(' ')[1:]
                 if len(words) > self.max_sentence_size:
                     self.max_sentence_size = len(words)
-                    print self.max_sentence_size
                 for word in words:
                     word = self.clean_word(word)
                     if word not in self.word2idx:
@@ -117,13 +116,19 @@ class Data(object):
                     self.pad_sentence(subtext)
                     subtext_set.append(subtext)
                 #vectorized_text.append(copy.deepcopy(subtext_set))
+                subtext_set = [i for sublist in subtext_set for i in sublist]
+                subtext_set = self.pad_to_memory_size(subtext_set)
                 vectorized_text.append(subtext_set)
                 print 'vectorized:'
                 print vectorized_text
+                #self.pad_to_memory_size(vectorized_text)
+                #print 'vectorized padded:'
+                #print vectorized_text
             for question in questions:
                 question_set = []
                 for word in question.split(' '):
                     question_set.append(self.word2idx[self.clean_word(word)])
+                # TODO: pad question
                 vectorized_question.append(list(question_set))
             for answer in answers:
                 answer_set = []
@@ -134,8 +139,6 @@ class Data(object):
         return vectorized_data
 
     def pad(self):
-        # TODO: Question: Do we need to pad the questions too? I think so, since A, B, C need to be same size. 
-        # But won't the padded zeros have an effect on the score matching process?
         for story in self.texts:
             for sentence in story:
                 if len(sentence) < self.max_sentence_size:
@@ -146,10 +149,22 @@ class Data(object):
                     question.extend([0 for x in range(self.max_sentence_size - len(question))])
     
     def pad_sentence(self, sentence):
-        # TODO: Question: Do we need to pad the questions too? I think so, since A, B, C need to be same size. 
-        # But won't the padded zeros have an effect on the score matching process?
         if len(sentence) < self.max_sentence_size:
-            sentence.extend([0 for x in range(self.max_sentence_size - len(sentence))])
+            #sentence.extend([0 for x in range(self.max_sentence_size - len(sentence))])
+            sentence += [0 for x in range(self.max_sentence_size - len(sentence))]
+
+    def pad_to_memory_size(self, text):
+        print 'Padding'
+        print text
+        if len(text) < self.mem_size:
+            #text.extend([0 for i in range(self.mem_size - len(text))])
+            text += [0 for i in range(self.mem_size - len(text))]
+        else:
+            # Only save the most recent 'self.max_sentence_size' entries
+            text = text[-(len(text)-self.max_sentence_size):]
+        return text
+
+
 
 
     def clean_word(self, word):
