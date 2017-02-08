@@ -103,7 +103,6 @@ class Data(object):
             vectorized_question = []
             vectorized_answer = []
             for sentences in text_set:
-                #print sentences
                 subtext_set = []
                 for sentence in sentences:
                     subtext = []
@@ -113,7 +112,6 @@ class Data(object):
                     subtext_set.append(subtext)
                 #vectorized_text.append(copy.deepcopy(subtext_set))
 
-                subtext_set = [i for sublist in subtext_set for i in sublist]
                 subtext_set = self.pad_to_memory_size(subtext_set)
                 vectorized_text.append(subtext_set)
             for question in questions:
@@ -127,7 +125,6 @@ class Data(object):
                 for word in answer.split(' '):
                     answer_set.append(self.word2idx[self.clean_word(word)])
                 vectorized_answer.append(list(answer_set))
-            #vectorized_data.append([list(vectorized_text), list(vectorized_question), list(vectorized_answer)])
             vectorized_data.append([vectorized_text, vectorized_question, vectorized_answer])
         return vectorized_data
 
@@ -147,13 +144,15 @@ class Data(object):
             sentence += [0 for x in range(self.max_sentence_size - len(sentence))]
 
     def pad_to_memory_size(self, text):
-        if len(text) < self.mem_size:
-            #text.extend([0 for i in range(self.mem_size - len(text))])
-            text += [0 for i in range(self.mem_size - len(text))]
+        while len(text) * self.max_sentence_size < self.mem_size:
+            #text += [0 for i in range(self.mem_size - len(text))]
+            text.append([0 for _ in range(self.max_sentence_size)])
+
         else:
             # Only save the most recent 'self.max_sentence_size' entries
-            text = text[-(self.mem_size-len(text)):]
-        assert(len(text) == self.mem_size)
+            # TODO: What if mem_size is not a multiple of max_sentence_size ??
+            text = text[::-1][:(self.mem_size/self.max_sentence_size)][::-1]
+        assert(len(text) * self.max_sentence_size == self.mem_size)
         return text
 
 
