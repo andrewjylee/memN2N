@@ -18,9 +18,7 @@ class Data(object):
         self.texts = [triplets[0] for triplets in self.data]
         self.questions = [triplets[1] for triplets in self.data]
         self.answers = [triplets[2] for triplets in self.data]
-        self.max_sentence_size = max([len(t[i]) for t in self.texts for i in range(len(t))])
         self.vocab_size = len(self.word2idx)
-        #self.pad()
 
     def read_data(self):
         filename = self.data_dir + "qa" + str(self.task_id) + "_"
@@ -66,14 +64,12 @@ class Data(object):
 
     def parse_data(self, filename):
         # Returns list of [(list of text sentences), question, answer]
-        text_set = []
-        questions = []
-        answers = []
         data_triplets = []
         with open(filename) as f:
             for line in f.readlines():
                 if int(line.split(' ')[0]) == 1:
                     # Beginning of Story
+                    text_set = []
                     intermediate_text_set = []
                     question_set = []
                     answer_set = []
@@ -107,7 +103,7 @@ class Data(object):
             vectorized_question = []
             vectorized_answer = []
             for sentences in text_set:
-                print sentences
+                #print sentences
                 subtext_set = []
                 for sentence in sentences:
                     subtext = []
@@ -116,14 +112,10 @@ class Data(object):
                     self.pad_sentence(subtext)
                     subtext_set.append(subtext)
                 #vectorized_text.append(copy.deepcopy(subtext_set))
+
                 subtext_set = [i for sublist in subtext_set for i in sublist]
                 subtext_set = self.pad_to_memory_size(subtext_set)
                 vectorized_text.append(subtext_set)
-                print 'vectorized:'
-                print vectorized_text
-                #self.pad_to_memory_size(vectorized_text)
-                #print 'vectorized padded:'
-                #print vectorized_text
             for question in questions:
                 question_set = []
                 for word in question.split(' '):
@@ -135,7 +127,8 @@ class Data(object):
                 for word in answer.split(' '):
                     answer_set.append(self.word2idx[self.clean_word(word)])
                 vectorized_answer.append(list(answer_set))
-            vectorized_data.append([list(vectorized_text), list(vectorized_question), list(vectorized_answer)])
+            #vectorized_data.append([list(vectorized_text), list(vectorized_question), list(vectorized_answer)])
+            vectorized_data.append([vectorized_text, vectorized_question, vectorized_answer])
         return vectorized_data
 
     def pad(self):
@@ -154,14 +147,13 @@ class Data(object):
             sentence += [0 for x in range(self.max_sentence_size - len(sentence))]
 
     def pad_to_memory_size(self, text):
-        print 'Padding'
-        print text
         if len(text) < self.mem_size:
             #text.extend([0 for i in range(self.mem_size - len(text))])
             text += [0 for i in range(self.mem_size - len(text))]
         else:
             # Only save the most recent 'self.max_sentence_size' entries
-            text = text[-(len(text)-self.max_sentence_size):]
+            text = text[-(self.mem_size-len(text)):]
+        assert(len(text) == self.mem_size)
         return text
 
 
@@ -189,7 +181,3 @@ class Data(object):
         print self.questions[-1]
 
         print self.answers[-1]
-
-        print '--'
-        for i in self.data[-1]:
-            print i

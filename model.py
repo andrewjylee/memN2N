@@ -20,9 +20,9 @@ def position_encoding(d, J):
 # Notes:
 #tf.nn.embedding_lookup(params, ids) = Ax
 class memN2N(object):
-    def __init__(self, vocab_size, sentence_size, batch_size):
+    def __init__(self, mem_size, vocab_size, sentence_size, batch_size):
         self.dim = 10 # d = edim = 'internal state dimension' 
-        self.mem_size = 50
+        self.mem_size = mem_size
         self.vocab_size = vocab_size
         self.sentence_size = sentence_size
         self.batch_size = batch_size
@@ -36,8 +36,8 @@ class memN2N(object):
 
     def setup_network(self):
         # Inputs (Placeholders)
-        self.sentences = tf.placeholder(tf.int32, [self.batch_size, self.mem_size, self.sentence_size])
-        self.questions = tf.placeholder(tf.int32, [self.batch_size * self.qa_pair_num, self.sentence_size])
+        self.sentences = tf.placeholder(tf.int32, [None, self.mem_size, self.sentence_size])
+        self.questions = tf.placeholder(tf.int32, [None, self.sentence_size])
 
         # Internal States (Variables)
         self.A = tf.Variable(tf.random_normal([self.vocab_size, self.dim]))
@@ -51,8 +51,8 @@ class memN2N(object):
     def _inference(self):#, placeholder, size_of_h1, size_of_h2):
         #m = tf.nn.embedding_lookup(self.A, self.sentences)
         
-        # --
         q_embedding = tf.nn.embedding_lookup(self.B, self.questions)
+        m_embedding = tf.nn.embedding_lookup(self.A, self.sentences)
         # TODO: Position Encoding
         u = tf.reduce_sum(q_embedding, 1)
         return q_embedding, u
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     ###############
     data = Data("/Volumes/Data/research/sandbox/data/tasks_1-20_v1-2/en/", 1, 30)
     data.run()
-   # data.print_summary()
+    #data.print_summary()
 
     stories_train, stories_val, questions_train, questions_val, answers_train, answers_val = train_test_split(data.texts, data.questions, data.answers, test_size=0.1) 
     batch_size = 20
@@ -92,12 +92,20 @@ if __name__ == '__main__':
     a = answers_train[0:batch_size]
 
     # Flatten lists out
+    print 'before:'
+    print s
+    print len(s)
     q = [question for sublist in q for question in sublist]
+    s = [sentence for sublist in s for sentence in sublist]
+    print 'after'
+    print s
+    print len(s)
+    print len(s)
 
     ###############
     # Build Model
     ###############
-    model = memN2N(data.vocab_size, data.max_sentence_size, batch_size)
+    model = memN2N(data.mem_size, data.vocab_size, data.max_sentence_size, batch_size)
     sess = tf.Session()
     sess.run(tf.initialize_all_variables())
     ###############
@@ -106,6 +114,6 @@ if __name__ == '__main__':
     for i in range(0, 1):
         feed_dict = {model.sentences: s, model.questions: q}
         #print sess.run(model.test_op, feed_dict=feed_dict)
-    #    tmp = sess.run(model.inference, feed_dict=feed_dict)
-    #    print tmp, tmp.shape
+        tmp = sess.run(model.inference, feed_dict=feed_dict)
+        print tmp, tmp.shape
     sess.close()
